@@ -1,0 +1,5 @@
+{
+  "AutomatedSetup": true,
+  "CameraUsageDescription": "The app requires access to the camera to take a photo for the puzzle.",
+  "MicrophoneUsageDescription": "The app may access the microphone when recording videos."
+}
