@@ -6,6 +6,8 @@ using System;
 public class GameManager : MonoBehaviour
 {
     public event Action<bool> PuzzleCompleted;
+    public event Action<int>  PiecePlacedCorrectly; // piece index when it lands in its correct slot
+    public event Action       MoveMade;             // every valid player move
 
     // Références aux éléments de la scène
     [SerializeField] private Transform gameTransform;
@@ -40,6 +42,32 @@ public class GameManager : MonoBehaviour
     private bool isAnimatingMove = false;
     private bool isGameStarted = false;
     private bool isGamePaused = false;
+    private int moveCount = 0;
+    private bool isRelaxMode = false;
+
+    public int MoveCount   => moveCount;
+    public int GridSize    => gridSize;
+    public bool IsRelaxMode => isRelaxMode;
+    public Texture2D CurrentPuzzleTexture => currentPuzzleTexture;
+    public Transform GameTransform        => gameTransform;
+    public float ElapsedTime      => timerManager != null ? timerManager.ElapsedTime : 0f;
+    public float RemainingTime    => timerManager != null ? timerManager.RemainingTime : 0f;
+    public float GameDurationSeconds => timerManager != null ? timerManager.GameDurationSeconds : 0f;
+
+    public int TotalPieceCount => pieces != null ? Mathf.Max(0, pieces.Count - 1) : 0;
+    public int CorrectPieceCount
+    {
+        get
+        {
+            if (pieces == null) return 0;
+            int n = 0;
+            for (int i = 0; i < pieces.Count; i++)
+            {
+                if (pieces[i].gameObject.activeSelf && pieces[i].name == $"{i}") n++;
+            }
+            return n;
+        }
+    }
 
     private List<int> savedArrangement;
     private int savedEmptyLocation = -1;
@@ -150,8 +178,15 @@ public class GameManager : MonoBehaviour
 
     private bool SwapIfValid(int i, int offset, int colCheck)
     {
-        SoundManager.Instance.PlaySwapPiece();
-        return SwapIfValid(i, offset, colCheck, true);
+        bool swapped = SwapIfValid(i, offset, colCheck, true);
+        if (swapped)
+        {
+            SoundManager.Instance.PlaySwapPiece();
+            HapticsManager.Instance?.PieceMove();
+            moveCount++;
+            MoveMade?.Invoke();
+        }
+        return swapped;
     }
 
     private bool SwapIfValid(int i, int offset, int colCheck, bool animate)
@@ -177,6 +212,14 @@ public class GameManager : MonoBehaviour
             }
 
             emptyLocation = i;
+
+            // Check if the moved piece landed in its correct slot
+            if (animate && isGameStarted && pieces[targetIndex].name == $"{targetIndex}")
+            {
+                PiecePlacedCorrectly?.Invoke(targetIndex);
+                StartCoroutine(FlashPieceColor(pieces[targetIndex], new Color(0.5f, 1f, 0.5f), 1, 0.18f));
+            }
+
             return true;
         }
         return false;
@@ -258,7 +301,7 @@ public class GameManager : MonoBehaviour
         puzzleMaterialInstance = new Material(prefabRenderer.sharedMaterial);
     }
 
-    public void StartGame(int newGridSize)
+    public void StartGame(int newGridSize, bool relaxMode = false)
     {
         if (newGridSize <= 1)
         {
@@ -266,6 +309,7 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        isRelaxMode = relaxMode;
         gridSize = newGridSize;
         PrepareNewBoard();
         referencePreviewManager.HidePreview();
@@ -273,6 +317,80 @@ public class GameManager : MonoBehaviour
         ShuffleBoard();
         SaveCurrentArrangement();
         StartTimer();
+    }
+
+    // Highlights a moveable piece that isn't yet in its correct position.
+    public void ShowHint()
+    {
+        if (!isGameStarted || pieces == null) return;
+
+        var candidates = new System.Collections.Generic.List<int>();
+        int above = emptyLocation - columns;
+        int below = emptyLocation + columns;
+        int left  = emptyLocation - 1;
+        int right = emptyLocation + 1;
+
+        if (above >= 0)                              candidates.Add(above);
+        if (below < pieces.Count)                   candidates.Add(below);
+        if (emptyLocation % columns != 0)           candidates.Add(left);
+        if (emptyLocation % columns != columns - 1) candidates.Add(right);
+
+        int selected = -1;
+        foreach (int idx in candidates)
+        {
+            if (pieces[idx].name != $"{idx}") { selected = idx; break; }
+        }
+        if (selected == -1 && candidates.Count > 0) selected = candidates[0];
+        if (selected == -1) return;
+
+        StartCoroutine(FlashPieceColor(pieces[selected], new Color(1f, 0.88f, 0.1f), 3, 0.13f));
+    }
+
+    private IEnumerator FlashPieceColor(Transform piece, Color flashColor, int pulses, float halfPeriod)
+    {
+        if (piece == null) yield break;
+
+        MeshRenderer mr = piece.GetComponent<MeshRenderer>();
+        Vector3 origScale = piece.localScale;
+        MaterialPropertyBlock block = new MaterialPropertyBlock();
+
+        for (int p = 0; p < pulses; p++)
+        {
+            float t = 0f;
+            while (t < halfPeriod)
+            {
+                t += Time.deltaTime;
+                float f = t / halfPeriod;
+                if (mr != null)
+                {
+                    mr.GetPropertyBlock(block);
+                    block.SetColor("_BaseColor", Color.Lerp(Color.white, flashColor, f));
+                    block.SetColor("_Color",     Color.Lerp(Color.white, flashColor, f));
+                    mr.SetPropertyBlock(block);
+                }
+                piece.localScale = origScale * (1f + 0.1f * Mathf.Sin(f * Mathf.PI));
+                yield return null;
+            }
+            t = 0f;
+            while (t < halfPeriod)
+            {
+                t += Time.deltaTime;
+                float f = t / halfPeriod;
+                if (mr != null)
+                {
+                    mr.GetPropertyBlock(block);
+                    block.SetColor("_BaseColor", Color.Lerp(flashColor, Color.white, f));
+                    block.SetColor("_Color",     Color.Lerp(flashColor, Color.white, f));
+                    mr.SetPropertyBlock(block);
+                }
+                yield return null;
+            }
+            if (p < pulses - 1) yield return new WaitForSeconds(0.08f);
+        }
+
+        // Reset
+        piece.localScale = origScale;
+        if (mr != null) { block.Clear(); mr.SetPropertyBlock(block); }
     }
 
     public void RestartGame()
@@ -556,12 +674,13 @@ public class GameManager : MonoBehaviour
         isAnimatingMove = false;
         isGameStarted = startGame;
         isGamePaused = false;
+        moveCount = 0;
         referencePreviewManager.SetGameStarted(startGame);
     }
 
     private void StartTimer()
     {
-        timerManager.StartTimer(HandleTimerCompleted);
+        timerManager.StartTimer(HandleTimerCompleted, isRelaxMode);
     }
 
     private void HandleTimerCompleted()
