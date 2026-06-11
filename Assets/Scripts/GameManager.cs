@@ -150,6 +150,7 @@ public class GameManager : MonoBehaviour
 
     private bool SwapIfValid(int i, int offset, int colCheck)
     {
+        SoundManager.Instance.PlaySwapPiece();
         return SwapIfValid(i, offset, colCheck, true);
     }
 

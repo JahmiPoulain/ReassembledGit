@@ -13,6 +13,7 @@ public class SoundManager : MonoBehaviour
 
     [Header("SFX")]
     [SerializeField] private AudioClip buttonClickSfx; // Le son joué quand on clique sur un bouton
+    [SerializeField] private AudioClip swapPieceSound; // Le son joué quand on clique sur un bouton
     [SerializeField] private AudioClip victorySfx;     // Le son joué quand le joueur gagne un niveau
     [SerializeField] private AudioClip defeatSfx;      // Le son joué quand le joueur perd un niveau
 
@@ -35,6 +36,12 @@ public class SoundManager : MonoBehaviour
     public void PlayButtonClick()
     {
         sfxSource.PlayOneShot(buttonClickSfx);
+    }
+
+    // Quand on clique sur une pièce, cette fonction est appelée pour jouer le son de déplacement
+    public void PlaySwapPiece()
+    {
+        sfxSource.PlayOneShot(swapPieceSound);
     }
 
     // Quand le joueur gagne un niveau, cette fonction est appelée pour jouer le son de victoire

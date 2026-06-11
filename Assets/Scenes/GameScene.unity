@@ -3608,6 +3608,7 @@ MonoBehaviour:
   sfxSource: {fileID: 1309368097}
   backgroundMusic: {fileID: 8300000, guid: 9bb75dd3010a3854c8a388cf7472ee71, type: 3}
   buttonClickSfx: {fileID: 8300000, guid: 644a6bf1b49c1e740a443e34316efc6f, type: 3}
+  swapPieceSound: {fileID: 8300000, guid: e240a28869a9763498c3fc00752db65a, type: 3}
   victorySfx: {fileID: 8300000, guid: 1a9b6af2a180b4da4ade045f745f509e, type: 3}
   defeatSfx: {fileID: 8300000, guid: e29656d7f657b459c8b570f4e9fba7c2, type: 3}
 --- !u!4 &1309368100
