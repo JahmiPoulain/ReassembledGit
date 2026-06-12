@@ -1863,7 +1863,7 @@ MonoBehaviour:
   screenWidthUsage: 0.88
   screenHeightUsage: 0.78
   screenCenterOffset: {x: 0, y: 0}
-  maxAspectTileMultiplier: 2
+  maxAspectTileMultiplier: 1
   timerManager: {fileID: 1693471356}
   referencePreviewManager: {fileID: 854287622}
   completionPanelDelaySeconds: 2
@@ -4143,6 +4143,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   timerText: {fileID: 643353809}
   gameDurationSeconds: 120
+  normalColor: {r: 1, g: 1, b: 1, a: 1}
+  warningColor: {r: 1, g: 0.65, b: 0, a: 1}
+  dangerColor: {r: 1, g: 0, b: 0, a: 1}
+  relaxColor: {r: 0.6, g: 0.9, b: 1, a: 1}
+  warningThreshold: 30
+  dangerThreshold: 10
 --- !u!4 &1693471357
 Transform:
   m_ObjectHideFlags: 0
